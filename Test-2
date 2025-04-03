@@ -1,0 +1,173 @@
+=======HTML========
+<section class="py-5 text-center container">
+  <div class="row py-lg-5">
+    <div class="col-lg-6 col-md-8 mx-auto">
+      <h1 class="fw-light">RSS Feeds</h1>
+      <p class="lead text-muted">Click to load feed</p>
+      <div class="btn-group">
+        <a href="#" class="btn btn-outline-secondary" data-url="https://feeds.bbci.co.uk/news/rss.xml">BBC News</a>
+        <a href="#" class="btn btn-outline-secondary" data-url="https://www.buzzfeed.com/uk/index.xml">Buzzfeed</a>
+        <a href="#" class="btn btn-primary" data-url="https://fliplet.com/feed">Fliplet</a>
+        <a href="#" class="btn btn-outline-secondary" data-url="https://www.ft.com/news-feed">FT</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Loading and error UI -->
+<div class="container">
+  <div id="loading" class="alert alert-secondary visually-hidden">Loading...</div>
+  <div id="error" class="alert alert-danger visually-hidden">
+    <h5>Unable to load feed</h5>
+    <small><a href="#" target="_blank">Open feed in a new tab</a></small>
+  </div>
+  
+  <!-- Feed Container -->
+  <div id="feed-container" class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-3"></div>
+  
+  <!-- Pagination -->
+  <nav class="mt-4">
+    <ul class="pagination justify-content-center">
+      <li class="page-item disabled"><a class="page-link" href="#" id="prev-page">Previous</a></li>
+      <li class="page-item"><a class="page-link" href="#" id="next-page">Next</a></li>
+    </ul>
+  </nav>
+</div>
+
+<!-- Handlebars Template -->
+<script id="feed-template" type="text/x-handlebars-template">
+  {{#each posts}}
+  <div class="col">
+    <div class="card shadow-sm">
+      <img src="{{thumbnail}}" class="card-img-top">
+      <div class="card-body">
+        <h5>{{title}}</h5>
+        <p class="card-text"><small>{{description}}</small></p>
+        <p><a href="{{link}}" target="_blank">Read more &rarr;</a></p>
+        <div class="d-flex justify-content-between align-items-center">
+          <small class="text-muted">{{date}}</small>
+        </div>
+      </div>
+    </div>
+  </div>
+  {{/each}}
+</script>
+=======HTML========
+
+
+
+========Js===========
+$(document).ready(function() {
+    const RSS_API = "https://api.rss2json.com/v1/api.json?rss_url=";
+    let feedsCache = {}; // Store fetched feeds
+    let currentFeed = [];
+    let currentPage = 0;
+    const postsPerPage = 5;
+
+    // Function to fetch RSS feed
+    function fetchRSS(url) {
+        if (feedsCache[url]) {
+            renderFeed(feedsCache[url]);
+            return;
+        }
+        
+        $("#loading").removeClass("visually-hidden");
+        $("#error").addClass("visually-hidden");
+        
+        $.getJSON(RSS_API + encodeURIComponent(url))
+            .done(function(data) {
+                feedsCache[url] = data.items;
+                renderFeed(data.items);
+            })
+            .fail(function() {
+                $("#loading").addClass("visually-hidden");
+                $("#error").removeClass("visually-hidden");
+            });
+    }
+
+    // Function to render feed
+    function renderFeed(posts) {
+        $("#loading").addClass("visually-hidden");
+        currentFeed = posts;
+        currentPage = 0;
+        updatePagination();
+        showPage();
+    }
+
+    // Function to update pagination buttons
+    function updatePagination() {
+        $("#prev-page").parent().toggleClass("disabled", currentPage === 0);
+        $("#next-page").parent().toggleClass("disabled", (currentPage + 1) * postsPerPage >= currentFeed.length);
+    }
+
+    // Function to show current page posts
+    function showPage() {
+        let paginatedPosts = currentFeed.slice(currentPage * postsPerPage, (currentPage + 1) * postsPerPage);
+        
+        // Format data
+        let formattedPosts = paginatedPosts.map(post => ({
+            title: post.title,
+            description: _.truncate(post.description, { length: 100 }),
+            link: post.link,
+            date: moment(post.pubDate).format("LL"),
+            thumbnail: post.thumbnail || "https://via.placeholder.com/300x225"
+        }));
+
+        // Compile Handlebars template
+        let template = Handlebars.compile($("#feed-template").html());
+        $("#feed-container").html(template({ posts: formattedPosts }));
+
+        updatePagination();
+    }
+
+    // Event listeners
+    $(".btn-group a").click(function(event) {
+        event.preventDefault();
+        fetchRSS($(this).data("url"));
+    });
+
+    $("#prev-page").click(function(event) {
+        event.preventDefault();
+        if (currentPage > 0) {
+            currentPage--;
+            showPage();
+        }
+    });
+
+    $("#next-page").click(function(event) {
+        event.preventDefault();
+        if ((currentPage + 1) * postsPerPage < currentFeed.length) {
+            currentPage++;
+            showPage();
+        }
+    });
+});
+========Js===========
+
+
+
+
+
+=======CSS========
+.card-text {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  overflow: hidden;
+}
+
+.visually-hidden {
+  display: none;
+}
+=======CSS========
+
+
+=======External-Resources=========
+https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css
+https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js
+https://cdnjs.cloudflare.com/ajax/libs/jquery-migrate/1.2.1/jquery-migrate.min.js
+https://cdn.jsdelivr.net/gh/jfhovinne/jFeed@0d411f761c26013fb8f960d5a0a20f848706fdc5/build/dist/jquery.jfeed.js
+https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js
+https://cdnjs.cloudflare.com/ajax/libs/handlebars.js/4.7.7/handlebars.min.js
+https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js
+=======External-Resources=========
